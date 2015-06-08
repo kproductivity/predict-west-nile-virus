@@ -42,6 +42,12 @@ train.dt$Date <- as.Date(train.dt$Date)
 train.dt$Month <- month(train.dt$Date)
 train.dt$Week <- week(train.dt$Date)
 
+# M is missing data
+weather.dt[weather.dt == "M"] <- NA
+
+# T is trace; we round to 0 (nil)
+weather.dt[weather.dt == "T"] <- 0
+
 weather.dt$Date <- as.Date(weather.dt$Date)
 weather.dt$Tavg <- as.numeric(weather.dt$Tavg)
 weather.dt$Depart <- as.numeric(weather.dt$Depart)
@@ -57,6 +63,8 @@ weather.dt$SeaLevel <- as.numeric(weather.dt$SeaLevel)
 weather.dt$AvgSpeed <- as.numeric(weather.dt$AvgSpeed)
 
 weather.1 <- weather.dt[which(weather.dt$Station == 1), ]
+weather.1 <- weather.1[ , -1]
+
 fulltrain.dt <- merge(train.dt, weather.1, all.x = TRUE)
 fulltrain.dt <- fulltrain.dt[ , -c(2, 3, 7)]
 
@@ -105,10 +113,25 @@ virus <- predict(fit.lda3, fulltest.dt)$class
 
 # Model 4 - ML
 set.seed(123)
-x <- fulltrain.dt[ , -5]
-y <- as.factor(fulltrain.dt$WnvPresent)
-fit.lda4 <- train(as.factor(WnvPresent) ~ .,
-                  data = fulltrain.dt,
-                  method = "lda")
-virus <- predict(fit.tree1, fulltest.dt, type = "vector")
 
+# dt <- na.omit(fulltrain.dt[ , -20])
+dt <-  fulltrain.dt[ , -20]
+
+y <- dt[ , 5]
+x <- dt[ , -c(1, 5, 16, 17, 18, 19)]
+
+preProc <- preProcess(x, method = c("center", "scale"), thresh = 0.95,
+                      k = 5, knnSummary = mean,
+                      fudge = .2, numUnique = 3)
+
+x <- predict(preProc, x)
+
+fit.ml <- train(x, y, method = "glmboost",
+                preProcess=c("center","scale"))
+
+virus <- predict(fit.ml, fulltest.dt)
+#virus.t <- function(t) ifelse(virus > t , 1,0)
+#virus <- virus.t(0)
+
+# Model 5
+fit.
